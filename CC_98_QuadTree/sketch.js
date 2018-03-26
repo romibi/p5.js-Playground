@@ -7,6 +7,9 @@
 // [video url 2]
 
 let qtree;
+let rangeSize=25;
+let rangeSizeMin=5;
+let rangeSizeMax=400;
 
 function setup() {
   createCanvas(400, 400);
@@ -21,13 +24,19 @@ function setup() {
   }
 }
 
+function mouseWheel(event) {
+  let newRangeSize = rangeSize+event.delta;
+  if(newRangeSize>=rangeSizeMin && newRangeSize<=rangeSizeMax)
+    rangeSize = newRangeSize;
+}
+
 function draw() {
   background(0);
   qtree.show();
 
   stroke(0, 255, 0);
   rectMode(CENTER);
-  let range = new Rectangle(mouseX, mouseY, 25, 25);
+  let range = new Rectangle(mouseX, mouseY, rangeSize, rangeSize);
   rect(range.x, range.y, range.w * 2, range.h * 2);
   let points = qtree.query(range);
   for (let p of points) {
