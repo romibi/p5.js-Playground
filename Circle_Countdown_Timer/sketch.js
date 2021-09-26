@@ -1,6 +1,9 @@
+// Links to this script:
+// https://editor.p5js.org/romibi/sketches/UF3JWTqzs
+// https://github.com/romibi/p5.js-Playground/tree/master/Circle_Countdown_Timer/sketch.js
 let radius = 100;
 let startTimeH = 0;
-let startTimeM = 05;
+let startTimeM = 55;
 let startTimeS = 05;
 let useStartTimeStamp = false;
 //let startTimeStamp = DateToYMDTimeString(new Date(new Date().getTime()+5*60000));
@@ -13,11 +16,22 @@ let emptyInside = true;
 let doRenderTimeText = true;
 let showHelp = false;
 
-let sColor, mColor, hColor, mCurrColor, hCurrColor, textColor = null;
+// MREM settings
+let useMixedRealityEffectMode = false;
+let experimentalHighQualityShadow = false;
+
+let sColor, mColor, hColor, mCurrColor, hCurrColor, textColor, fgColor, bgColor, bg2Color = null;
 
 let targettime = 0;
 let maxMin = 60;
 let maxHour = 12;
+let radiusModifier = (17/12);
+let textSizeModifier = 1;
+let pixelModifier = 1; // wrong at the start
+let MremTextSizeModifier = 0.5;
+
+let textImg;
+let blurrBgImg;
 
 function DateToYMDTimeString(dateObj) {
   return (new Date(dateObj + " UTC")).toISOString().replace('T', ' ').slice(0,-5);
@@ -33,7 +47,6 @@ function DefaultTimeStamp() {
       date.setHours(time[0]);
     }
     useStartTimeStamp = true;
-    console.log(date);
   }
   return date;
 }
@@ -63,35 +76,52 @@ function preload() {
 
 function setup() {
   // canvas setup
-  createCanvas(1000, 1000);
-  radius = width;
-  
+  //createCanvas(1000,1000);
+  createCanvas(1920, 1080); 
+  //createCanvas(3840, 2160);
+  //createCanvas(768, 432);
+    
   // URL param options
   params = getURLParams();
+  
+  useMixedRealityEffectMode = getParamBool('mrEffectMode',useMixedRealityEffectMode);
+  
   startTimeStamp = DateToYMDTimeString(DefaultTimeStamp());
   
-  startTimeH = getParamInt('timeH',0);
-  startTimeM = getParamInt('timeM',5);
-  startTimeS = getParamInt('timeS',5);
+  startTimeH = getParamInt('timeH',startTimeH);
+  startTimeM = getParamInt('timeM',startTimeM);
+  startTimeS = getParamInt('timeS',startTimeS);
   
   clockCircles = getParamBool('clockCircles',true);
   emptyInside = getParamBool('emptyInside',true);
-  
-  // not yet configurable options
-  sColor = color(255, 255, 255, 255);
-  mColor = color(255, 255, 255, 255);
-  mCurrColor = color(255, 255, 255, 127);
-  hColor = color(255, 255, 255, 255);
-  hCurrColor = color(255, 255, 255, 127);
-  textColor = color(255, 255, 255, 255);
-  
+   
   // other setup
+  
+  // [START] fakey fakey blurr image
+  textImg = createGraphics(width/2, height/2);
+  textImg.textFont(shears);
+  textImg.noStroke();
+  
+  let backupVar = useMixedRealityEffectMode;
+  useMixedRealityEffectMode = true;
+  updateGlobalModifiers();
+  blurrBgImg = getTimeTextImg(0,8,8, radius * 0.33, color(0,0,0,127), '88');
+  blurrBgImg.filter(BLUR, 10);
+  
+  useMixedRealityEffectMode = backupVar;
+  // [END] fakey fakey blurr image
+  
+  textImg = createGraphics(width/2, height/2);
+  
   textFont(shears);
+  textImg.textFont(shears);
 
   frameRate(30);
-  noStroke();
+  noStroke();  
+  textImg.noStroke();
 
   resetTime();
+  updateGlobalModifiers();
 }
 
 function resetTime() {
@@ -133,8 +163,9 @@ function setMaxCircleAmount() {
 }
 
 function draw() {
-  translate(width / 2, height / 2);
+  clear();
   
+  // calculate some stuff
   let sTot = 0;
   let h = 0;
   let m = 0;
@@ -157,7 +188,57 @@ function draw() {
     h = hTot; // % 60;
   }
   
-  clear();
+  // draw
+   
+  push();
+  if(useMixedRealityEffectMode){
+    // draw main stuff centered in upper right quadrant
+    translate(width * (3/4), height * (1/4));
+    
+    // draw mask bg
+    fill(bgColor);
+    // fill upper right quadrant
+    rect(-width*(1/4),-height*(1/4),width/2,height/2);
+  } else {
+    // draw in middle
+    translate(width / 2, height / 2);
+  }
+  
+  renderMainClockView(sTot, h, m, s);
+  
+  if(showHelp) {
+    renderHelpText(height * 0.17);
+  }
+  
+  pop();
+  
+  // cleanup spilling to other quadrants
+  if(useMixedRealityEffectMode) {
+    erase();
+    // clean upper left quadrant
+    rect(0,0,width/2,height/2);
+    // clean lower right quadrant
+    rect(width/2,height/2,width/2,height/2);
+    // don't clean lower left quadrant?
+    noErase();
+  
+    
+    push();
+    // draw bg stuff centered in lower left quadrant
+    translate(width * (1/4), height * (3/4));
+    renderBGView(sTot, h, m, s);
+    
+    pop();
+    push();
+    // draw fg stuff centered in upper left quadrant
+    translate(width * (1/4), height * (1/4));
+    renderFGView(sTot, h, m, s);
+    pop();
+  }
+}
+
+function renderMainClockView(sTot, h, m, s) {
+  // render
   if (sTot > 0) {
     renderCircles(h, m, s, radius * 0, radius * 0.33, radius * 0.66, radius);
   } else {
@@ -167,17 +248,62 @@ function draw() {
   }
   
   textStyle(BOLD);
-  if(!emptyInside || h >= 1) {
-    erase();
-    renderTimeText(floor(h), floor(m), floor(s), height * 0.17);
-    noErase();
-    //textStyle(NORMAL);
-  }
-  renderTimeText(floor(h), floor(m), floor(s), height * 0.163);
+  fill(bgColor);
+  renderTimeText(floor(h), floor(m), floor(s), radius * 0.326);
+}
+
+function renderBGView(sTot, h, m, s) {
+  textStyle(BOLD);
   
-  if(showHelp) {
-    renderHelpText(height * 0.17);
+  // draw mask bg
+  fill(bg2Color);
+  // fill upper right quadrant
+  rect(-width*(1/4),-height*(1/4),width/2,height/2);
+  
+  let tImg;
+  if (experimentalHighQualityShadow){
+    tImg = getTimeTextImg(floor(h), floor(m), floor(s), radius * 0.33, bgColor);
+    tImg.filter(BLUR,5);
+  } else {
+    tImg = getTimeTextImg(floor(h), floor(m), floor(s), radius * 0.326, bg2Color);
+    image(blurrBgImg, -blurrBgImg.width/2, -blurrBgImg.height/2, blurrBgImg.width, blurrBgImg.height);
+    image(blurrBgImg, -blurrBgImg.width/2, -blurrBgImg.height/2, blurrBgImg.width, blurrBgImg.height);
   }
+  image(tImg,-tImg.width/2,-tImg.height/2, tImg.width, tImg.height);
+  //renderTimeText(floor(h), floor(m), floor(s), radius * 0.326);
+}
+
+function renderFGView(sTot, h, m, s) {
+  textStyle(BOLD);
+  renderTimeText(floor(h), floor(m), floor(s), radius * 0.326, fgColor);
+}
+
+function updateGlobalModifiers() {
+  mCurrColor = color(255, 255, 255, 127);
+  hCurrColor = color(255, 255, 255, 127);
+  textColor = color(255, 255, 255, 255);
+  
+  if(useMixedRealityEffectMode){
+    sColor = color(255, 255, 255, 230);
+    mColor = color(255, 255, 255, 230);
+    hColor = color(255, 255, 255, 230);
+    fgColor = color(255, 255, 255, 200);
+    bgColor = color(0,0,0,255);
+    bg2Color = color(0,0,0,127);
+    
+    radius = height*radiusModifier / 2;
+  } else {
+    sColor = color(255, 255, 255, 255);
+    mColor = color(255, 255, 255, 255);
+    hColor = color(255, 255, 255, 255);
+    
+    radius = height*radiusModifier;
+  }
+  
+  textSizeModifier = (textImg.height/height);
+  
+  // the arbitrary numbers in the text rendering were found while the canvas height was 1000 and the radius was half the canvas height
+  pixelModifier = (radius/500) * (textImg.height/height);
 }
 
 function renderCircles(h, m, s, hInRad, hRad, mRad, sRad) {
@@ -189,7 +315,7 @@ function renderCircles(h, m, s, hInRad, hRad, mRad, sRad) {
   arc(0, 0, sRad, sRad, 0, radians(360 / 60 * s));
 
   if (emptyInside || m > 0) {
-    erase();
+    conditionalErase();
     ellipse(0, 0, mRad);
     noErase();
   }
@@ -207,7 +333,7 @@ function renderCircles(h, m, s, hInRad, hRad, mRad, sRad) {
     }
 
     if (emptyInside || h >= 1) {
-      erase();
+      conditionalErase();
       ellipse(0, 0, hRad);
       noErase();
     }
@@ -222,7 +348,7 @@ function renderCircles(h, m, s, hInRad, hRad, mRad, sRad) {
     arc(0, 0, hRad, hRad, 0, radians(360 / maxHour * floor(h)));
 
     if (emptyInside) {
-      erase();
+      conditionalErase();
       ellipse(0, 0, hInRad);
       noErase();
     }
@@ -231,15 +357,24 @@ function renderCircles(h, m, s, hInRad, hRad, mRad, sRad) {
   rotate(radians(90));
 }
 
-function renderTimeText(h, m, s, tSize) {
+function renderTimeText(h, m, s, tSize, tColor) {
   if (!doRenderTimeText) return;
+  let tImg = getTimeTextImg(h,m,s,tSize,tColor);
+  image(tImg,-tImg.width/2,-tImg.height/2);
+}
 
-  fill(textColor);
-  textAlign(CENTER, CENTER);
-  textSize(tSize);
+function getTimeTextImg(h, m, s, tSize, tColor, textOverride) {
+  textImg.clear();
+  textImg.push();
+  textImg.translate(textImg.width/2,textImg.height/2);
+  if(typeof tColor === 'undefined') tColor = textColor;
+  let useOverride = false;
+  if(typeof textOverride !== 'undefined') useOverride = true;
   
-  //textSize(170);
-
+  textImg.fill(tColor);
+  textImg.textAlign(CENTER, CENTER);
+  textImg.textSize(tSize * textSizeModifier);
+  
   var leftSideText = '';
   var rightSideText = '';
     
@@ -247,33 +382,48 @@ function renderTimeText(h, m, s, tSize) {
     
   var leftNum = ShowHours ? h : m;
   var rightNum = ShowHours ? m : s;
-    
+        
   leftSideText += (''+leftNum).length == 1 ? '0' : '';
   leftSideText += leftNum;
     
   rightSideText += (''+rightNum).length == 1 ? '0' : '';
   rightSideText += ''+rightNum;
+  
+  if(useOverride){
+    leftSideText = textOverride;
+    rightSideText = textOverride;
+  }
     
-  textAlign(RIGHT,CENTER);
-  text(leftSideText, -5, 0);
+  textImg.textAlign(RIGHT,CENTER);
+  textImg.text(leftSideText, -5*pixelModifier, 0);
   
-  textAlign(LEFT,CENTER);
-  text(rightSideText, 5,0);
+  textImg.textAlign(LEFT,CENTER);
+  textImg.text(rightSideText, 5*pixelModifier,0);
   
-  textAlign(CENTER, CENTER);
-  text(':', 0, -12);
+  textImg.textAlign(CENTER, CENTER);
+  textImg.text(':', 0, -12*pixelModifier);
      
-  textSize(tSize * 0.25);
+  textImg.textSize(tSize * 0.25 * textSizeModifier);
   
   if (timeEnterMode == 1) {
-    text('Enter Hour', 0, -110);
+    textImg.text('Enter Hour', 0, -110*pixelModifier);
   } else if (timeEnterMode == 2) {
-    text('Enter Minutes', 0, -110);
+    textImg.text('Enter Minutes', 0, -110*pixelModifier);
   } else if (timeEnterMode == 3) {
-    text('Enter Seconds', 0, -110);
+    textImg.text('Enter Seconds', 0, -110*pixelModifier);
   } else if (timeEnterMode == -1) {
-    text(startTimeStamp, 0, 110);
-    text('Enter Timestamp', 0, -110);
+    textImg.text(startTimeStamp, 0, 110*pixelModifier);
+    textImg.text('Enter Timestamp', 0, -110*pixelModifier);
+  }
+  textImg.pop();
+  return textImg;
+}
+
+function conditionalErase() {
+  if(!useMixedRealityEffectMode) {
+    erase();
+  }else{
+    fill(bgColor);
   }
 }
 
@@ -281,18 +431,18 @@ function renderHelpText(tSize) {
   background('rgba(0%,0%,0%,0.5)');
   fill(textColor);
   textAlign(CENTER, CENTER);
-  textSize(tSize * 0.25);
+  textSize(tSize * 0.25 * textSizeModifier);
   
   text('<space> - Enter Time\n'+
        '<t> - Enter TimeStamp\n'+
        '<c> - Toggle Clock circles\n'+
        '<e> - Toggle empty inside\n'+
        '<backspace> - Reset timer\n'+
-       '<h> or <?> - Toggle this help text',0,0);
+       '<h> or <?> - Toggle this help text\n'+
+       '<m> - MixedRealityEffect Mode',0,0);
 }
 
 function keyTyped() {
-  console.log('timeEnterMode'+timeEnterMode);
   if (timeEnterMode==-1){
     startTimeStamp += key;
     resetTime();
@@ -326,11 +476,13 @@ function keyTyped() {
     useStartTimeStamp = true;
   } else if (key === 'h' || key === '?') {
     showHelp = !showHelp;
+  } else if (key === 'm') {
+    useMixedRealityEffectMode = !useMixedRealityEffectMode;
   }
+  updateGlobalModifiers();
 }
 
 function keyPressed() {
-  console.log('timeEnterMode'+timeEnterMode);
   if (keyCode === ENTER) {
     timeEnterMode = 0;
     resetTime();
