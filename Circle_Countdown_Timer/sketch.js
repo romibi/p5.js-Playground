@@ -19,6 +19,7 @@ let showHelp = false;
 // MREM settings
 let useMixedRealityEffectMode = false;
 let experimentalHighQualityShadow = false;
+let textImgDiv = 8;
 
 let sColor, mColor, hColor, mCurrColor, hCurrColor, textColor, fgColor, bgColor, bg2Color = null;
 
@@ -27,8 +28,8 @@ let maxMin = 60;
 let maxHour = 12;
 let radiusModifier = (17/12);
 let textSizeModifier = 1;
+let textImgTextSizeModifier = 1;
 let pixelModifier = 1; // wrong at the start
-let MremTextSizeModifier = 0.5;
 
 let textImg;
 let blurrBgImg;
@@ -85,6 +86,7 @@ function setup() {
   params = getURLParams();
   
   useMixedRealityEffectMode = getParamBool('mrEffectMode',useMixedRealityEffectMode);
+  experimentalHighQualityShadow = getParamBool('hqExp',experimentalHighQualityShadow);
   
   startTimeStamp = DateToYMDTimeString(DefaultTimeStamp());
   
@@ -98,20 +100,20 @@ function setup() {
   // other setup
   
   // [START] fakey fakey blurr image
-  textImg = createGraphics(width/2, height/2);
+  textImg = createGraphics(width/textImgDiv, height/textImgDiv);
   textImg.textFont(shears);
   textImg.noStroke();
   
   let backupVar = useMixedRealityEffectMode;
   useMixedRealityEffectMode = true;
   updateGlobalModifiers();
-  blurrBgImg = getTimeTextImg(0,8,8, radius * 0.33, color(0,0,0,127), '88');
-  blurrBgImg.filter(BLUR, 10);
+  blurrBgImg = getTimeTextImg(0,8,8, radius * 0.165, color(0,0,0,127), false, '88');
+  blurrBgImg.filter(BLUR, 10/textImgDiv);
   
   useMixedRealityEffectMode = backupVar;
   // [END] fakey fakey blurr image
   
-  textImg = createGraphics(width/2, height/2);
+  textImg = createGraphics(width/textImgDiv, height/textImgDiv);
   
   textFont(shears);
   textImg.textFont(shears);
@@ -207,7 +209,7 @@ function draw() {
   renderMainClockView(sTot, h, m, s);
   
   if(showHelp) {
-    renderHelpText(height * 0.17);
+    renderHelpText(height * 0.085);
   }
   
   pop();
@@ -222,7 +224,7 @@ function draw() {
     // don't clean lower left quadrant?
     noErase();
   
-    
+   
     push();
     // draw bg stuff centered in lower left quadrant
     translate(width * (1/4), height * (3/4));
@@ -249,10 +251,16 @@ function renderMainClockView(sTot, h, m, s) {
   
   textStyle(BOLD);
   fill(bgColor);
-  renderTimeText(floor(h), floor(m), floor(s), radius * 0.326);
+  renderTimeText(floor(h), floor(m), floor(s), radius * 0.163);
 }
 
 function renderBGView(sTot, h, m, s) {
+  if (sTot <= 0) {
+    h = 0;
+    m = 0;
+    s = 0;
+  }
+  
   textStyle(BOLD);
   
   // draw mask bg
@@ -260,22 +268,27 @@ function renderBGView(sTot, h, m, s) {
   // fill upper right quadrant
   rect(-width*(1/4),-height*(1/4),width/2,height/2);
   
-  let tImg;
   if (experimentalHighQualityShadow){
-    tImg = getTimeTextImg(floor(h), floor(m), floor(s), radius * 0.33, bgColor);
-    tImg.filter(BLUR,5);
+    let tImg = getTimeTextImg(floor(h), floor(m), floor(s), radius * 0.165, bgColor);
+    tImg.filter(BLUR,5/textImgDiv);
+    image(tImg,-tImg.width/2*textImgDiv,-tImg.height/2*textImgDiv, tImg.width*textImgDiv, tImg.height*textImgDiv);
   } else {
-    tImg = getTimeTextImg(floor(h), floor(m), floor(s), radius * 0.326, bg2Color);
-    image(blurrBgImg, -blurrBgImg.width/2, -blurrBgImg.height/2, blurrBgImg.width, blurrBgImg.height);
-    image(blurrBgImg, -blurrBgImg.width/2, -blurrBgImg.height/2, blurrBgImg.width, blurrBgImg.height);
+    image(blurrBgImg, -blurrBgImg.width/2*textImgDiv, -blurrBgImg.height/2*textImgDiv, blurrBgImg.width*textImgDiv, blurrBgImg.height*textImgDiv);
+    image(blurrBgImg, -blurrBgImg.width/2*textImgDiv, -blurrBgImg.height/2*textImgDiv, blurrBgImg.width*textImgDiv, blurrBgImg.height*textImgDiv);
+    renderTimeText(floor(h), floor(m), floor(s), radius * 0.163, bg2Color);
   }
-  image(tImg,-tImg.width/2,-tImg.height/2, tImg.width, tImg.height);
-  //renderTimeText(floor(h), floor(m), floor(s), radius * 0.326);
+  //renderTimeText(floor(h), floor(m), floor(s), radius * 0.163);
 }
 
 function renderFGView(sTot, h, m, s) {
+  if (sTot <= 0) {
+    h = 0;
+    m = 0;
+    s = 0;
+  }
+  
   textStyle(BOLD);
-  renderTimeText(floor(h), floor(m), floor(s), radius * 0.326, fgColor);
+  renderTimeText(floor(h), floor(m), floor(s), radius * 0.163, fgColor);
 }
 
 function updateGlobalModifiers() {
@@ -292,18 +305,20 @@ function updateGlobalModifiers() {
     bg2Color = color(0,0,0,127);
     
     radius = height*radiusModifier / 2;
+    textSizeModifier = 0.5;
   } else {
     sColor = color(255, 255, 255, 255);
     mColor = color(255, 255, 255, 255);
     hColor = color(255, 255, 255, 255);
     
     radius = height*radiusModifier;
+    textSizeModifier = 1;
   }
   
-  textSizeModifier = (textImg.height/height);
+  textImgTextSizeModifier = (textImg.height/height);
   
   // the arbitrary numbers in the text rendering were found while the canvas height was 1000 and the radius was half the canvas height
-  pixelModifier = (radius/500) * (textImg.height/height);
+  pixelModifier = (radius/500);
 }
 
 function renderCircles(h, m, s, hInRad, hRad, mRad, sRad) {
@@ -359,21 +374,35 @@ function renderCircles(h, m, s, hInRad, hRad, mRad, sRad) {
 
 function renderTimeText(h, m, s, tSize, tColor) {
   if (!doRenderTimeText) return;
-  let tImg = getTimeTextImg(h,m,s,tSize,tColor);
-  image(tImg,-tImg.width/2,-tImg.height/2);
+  getTimeTextImg(h,m,s,tSize,tColor, true);
 }
 
-function getTimeTextImg(h, m, s, tSize, tColor, textOverride) {
-  textImg.clear();
-  textImg.push();
-  textImg.translate(textImg.width/2,textImg.height/2);
+function getTimeTextImg(h, m, s, tSize, tColor, doRenderDirectly, textOverride) {
   if(typeof tColor === 'undefined') tColor = textColor;
   let useOverride = false;
   if(typeof textOverride !== 'undefined') useOverride = true;
+  if(typeof doRenderDirectly === 'undefined') doRenderDirectly = false;
   
-  textImg.fill(tColor);
-  textImg.textAlign(CENTER, CENTER);
-  textImg.textSize(tSize * textSizeModifier);
+  let localPixelModifier = 1;
+  let localtextImgTextSizeModifier = 1;
+  
+  let img;
+  
+  if(doRenderDirectly) {
+    img = self;
+  } else {
+    img = textImg;
+    img.clear();
+    img.push();
+    img.translate(textImg.width/2,textImg.height/2);
+    localtextImgTextSizeModifier = textImgTextSizeModifier;
+    localPixelModifier = pixelModifier * localtextImgTextSizeModifier;
+  }
+  
+  
+  img.fill(tColor);
+  img.textAlign(CENTER, CENTER);
+  img.textSize(tSize * localtextImgTextSizeModifier);
   
   var leftSideText = '';
   var rightSideText = '';
@@ -394,29 +423,31 @@ function getTimeTextImg(h, m, s, tSize, tColor, textOverride) {
     rightSideText = textOverride;
   }
     
-  textImg.textAlign(RIGHT,CENTER);
-  textImg.text(leftSideText, -5*pixelModifier, 0);
+  img.textAlign(RIGHT,CENTER);
+  img.text(leftSideText, -5*localPixelModifier, 0);
   
-  textImg.textAlign(LEFT,CENTER);
-  textImg.text(rightSideText, 5*pixelModifier,0);
+  img.textAlign(LEFT,CENTER);
+  img.text(rightSideText, 5*localPixelModifier,0);
   
-  textImg.textAlign(CENTER, CENTER);
-  textImg.text(':', 0, -12*pixelModifier);
+  img.textAlign(CENTER, CENTER);
+  img.text(':', 0, -12*localPixelModifier);
      
-  textImg.textSize(tSize * 0.25 * textSizeModifier);
+  img.textSize(tSize * 0.25 * localtextImgTextSizeModifier);
   
   if (timeEnterMode == 1) {
-    textImg.text('Enter Hour', 0, -110*pixelModifier);
+    img.text('Enter Hour', 0, -110*localPixelModifier);
   } else if (timeEnterMode == 2) {
-    textImg.text('Enter Minutes', 0, -110*pixelModifier);
+    img.text('Enter Minutes', 0, -110*localPixelModifier);
   } else if (timeEnterMode == 3) {
-    textImg.text('Enter Seconds', 0, -110*pixelModifier);
+    img.text('Enter Seconds', 0, -110*localPixelModifier);
   } else if (timeEnterMode == -1) {
-    textImg.text(startTimeStamp, 0, 110*pixelModifier);
-    textImg.text('Enter Timestamp', 0, -110*pixelModifier);
+    img.text(startTimeStamp, 0, 110*localPixelModifier);
+    img.text('Enter Timestamp', 0, -110*localPixelModifier);
   }
-  textImg.pop();
-  return textImg;
+  if(!doRenderDirectly) {
+    img.pop();
+  }
+  return img;
 }
 
 function conditionalErase() {
@@ -431,7 +462,7 @@ function renderHelpText(tSize) {
   background('rgba(0%,0%,0%,0.5)');
   fill(textColor);
   textAlign(CENTER, CENTER);
-  textSize(tSize * 0.25 * textSizeModifier);
+  textSize(tSize * textSizeModifier);
   
   text('<space> - Enter Time\n'+
        '<t> - Enter TimeStamp\n'+
