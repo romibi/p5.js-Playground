@@ -42,10 +42,12 @@ function DefaultTimeStamp() {
   let date = new Date();
   if (params.time !== undefined) {
     let time = params.time.split(':');
-    if (time[1] !== undefined) {
-      date.setHours(time[0],time[1]);
+    if (time[2] !== undefined) {
+      date.setHours(time[0],time[1],time[2]);
+    } else if (time[1] !== undefined) {
+      date.setHours(time[0],time[1],0);
     } else {
-      date.setHours(time[0]);
+      date.setHours(time[0],0,0);
     }
     useStartTimeStamp = true;
   }
