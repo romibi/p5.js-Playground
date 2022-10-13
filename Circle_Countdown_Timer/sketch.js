@@ -35,7 +35,11 @@ let textImg;
 let blurrBgImg;
 
 function DateToYMDTimeString(dateObj) {
-  return (new Date(dateObj + " UTC")).toISOString().replace('T', ' ').slice(0,-5);
+  try {
+    return (new Date(dateObj + " UTC")).toISOString().replace('T', ' ').slice(0,-5);
+  } catch (error) {
+    return ''; // do not crash in some strange overlay browsers
+  }
 }
 
 function DefaultTimeStamp() {
