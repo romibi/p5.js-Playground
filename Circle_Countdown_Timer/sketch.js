@@ -1,7 +1,11 @@
 // Links to this script:
 // https://editor.p5js.org/romibi/sketches/UF3JWTqzs
 // https://github.com/romibi/p5.js-Playground/tree/master/Circle_Countdown_Timer/sketch.js
+
 let radius = 100;
+let defaultWidth = 1920;
+let defaultHeight = 1080;
+let allowTomorrow = false;
 let startTimeH = 0;
 let startTimeM = 55;
 let startTimeS = 05;
@@ -43,6 +47,7 @@ function DateToYMDTimeString(dateObj) {
 }
 
 function DefaultTimeStamp() {
+  let nowDate = new Date();
   let date = new Date();
   if (params.time !== undefined) {
     let time = params.time.split(':');
@@ -54,6 +59,10 @@ function DefaultTimeStamp() {
       date.setHours(time[0],0,0);
     }
     useStartTimeStamp = true;
+  }
+  if(getParamBool('allowTomorrow', allowTomorrow) && (nowDate>date)) {
+    let ms = date.getTime() + 24*60*60*1000
+    date = new Date(ms);
   }
   return date;
 }
@@ -82,14 +91,13 @@ function preload() {
 }
 
 function setup() {
-  // canvas setup
-  //createCanvas(1000,1000);
-  createCanvas(1920, 1080); 
-  //createCanvas(3840, 2160);
-  //createCanvas(768, 432);
-    
   // URL param options
   params = getURLParams();
+
+  // canvas setup
+  let w = getParamInt('width', defaultWidth);
+  let h = getParamInt('height', defaultHeight);
+  createCanvas(w, h);
   
   useMixedRealityEffectMode = getParamBool('mrEffectMode',useMixedRealityEffectMode);
   experimentalHighQualityShadow = getParamBool('hqExp',experimentalHighQualityShadow);
